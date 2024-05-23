@@ -80,18 +80,22 @@ def generate_marketing_strategy(author_info):
     Provide detailed steps and strategies, including matching the author with media, PR agencies, or agents, and generating social media posts, blog posts, press releases, and pitch emails to influencers, media companies, book clubs, local libraries, elementary schools, and colleges. Also, include a book launch strategy with social media marketing, Amazon, and Google ads plan.
     """
 
-    response = openai.Completion.create(
-        engine="text-davinci-003",
-        prompt=prompt,
-        max_tokens=1500,
-        temperature=0.7
-    )
-
-    strategy = response.choices[0].text.strip()
-    return strategy
+    try:
+        response = openai.Completion.create(
+            model="text-davinci-003",
+            prompt=prompt,
+            max_tokens=1500,
+            temperature=0.7
+        )
+        strategy = response.choices[0].text.strip()
+        return strategy
+    except openai.error.OpenAIError as e:
+        st.error(f"An error occurred: {e}")
+        return None
 
 def generate_pdf_report(author_info, marketing_strategy):
-    c = canvas.Canvas("Book_Marketing_Campaign_Report.pdf", pagesize=letter)
+    pdf_filename = "Book_Marketing_Campaign_Report.pdf"
+    c = canvas.Canvas(pdf_filename, pagesize=letter)
     width, height = letter
 
     # Title
@@ -102,44 +106,46 @@ def generate_pdf_report(author_info, marketing_strategy):
     c.setFont("Helvetica", 12)
     c.drawString(30, height - 80, f"Book: {author_info['title']}")
 
-    # Marketing Strategy
+    # Author Information
     c.setFont("Helvetica-Bold", 16)
-    c.drawString(30, height - 110, "Marketing Strategy")
+    c.drawString(30, height - 110, "Author Information")
+    y = height - 130
+    c.setFont("Helvetica", 12)
+    c.drawString(30, y, f"Name: {author_info['author_name']}")
+    y -= 20
+    c.drawString(30, y, f"Email: {author_info['author_email']}")
+    y -= 20
+    c.drawString(30, y, f"Book Title: {author_info['title']}")
+    y -= 20
+    c.drawString(30, y, f"Genre: {author_info['genre']}")
+    y -= 20
+    c.drawString(30, y, f"Goal: {author_info['goal']}")
+    y -= 20
+    c.drawString(30, y, f"Target Audience: {author_info['audience']}")
+    y -= 20
+    c.drawString(30, y, f"Release Date: {author_info['release_date']}")
 
-    y = height - 140
+    # Marketing Strategy
+    y -= 40
+    c.setFont("Helvetica-Bold", 16)
+    c.drawString(30, y, "Marketing Strategy")
+    y -= 20
+    c.setFont("Helvetica", 12)
     for line in marketing_strategy.split('\n'):
-        c.setFont("Helvetica", 12)
         c.drawString(30, y, line.strip())
         y -= 15
         if y < 100:  # Start a new page if space is running out
             c.showPage()
             y = height - 50
 
-    # PR Activities
-    c.setFont("Helvetica-Bold", 16)
-    c.drawString(30, y, "Events")
-    y -= 20
-
-    # Table headers
-    c.setFont("Helvetica-Bold", 12)
-    c.drawString(30, y, "Event")
-    c.drawString(200, y, "Date")
-    c.drawString(300, y, "Details")
-    y -= 20
-
-    # Table rows
-    c.setFont("Helvetica", 12)
-    for index, row in st.session_state.pr_activities.iterrows():
-        c.drawString(30, y, str(row['Event']))
-        c.drawString(200, y, str(row['Date']))
-        c.drawString(300, y, str(row['Details']))
-        y -= 20
-        if y < 100:  # Start a new page if space is running out
-            c.showPage()
-            y = height - 50
-
     c.save()
     st.success("PDF report generated successfully!")
+    st.download_button(
+        label="Download PDF",
+        data=open(pdf_filename, "rb").read(),
+        file_name=pdf_filename,
+        mime="application/pdf",
+    )
 
 def export_to_ical():
     c = Calendar()
@@ -165,8 +171,10 @@ def main():
         author_info = collect_author_info()
         if st.button("Generate Marketing Strategy"):
             marketing_strategy = generate_marketing_strategy(author_info)
-            st.text_area("Generated Marketing Strategy:", marketing_strategy)
-            st.session_state.marketing_strategy = marketing_strategy
+            if marketing_strategy:
+                st.text_area("Generated Marketing Strategy:", marketing_strategy)
+                st.session_state.marketing_strategy = marketing_strategy
+                st.session_state.author_info = author_info
 
     elif choice == "Book Launch Strategy":
         if "marketing_strategy" in st.session_state:
@@ -180,7 +188,8 @@ def main():
         author_info = collect_author_info()
         if st.button(f"Generate Pitch Email for {recipient_type}"):
             pitch_email = generate_pitch_email(author_info, recipient_type)
-            st.text_area(f"Generated Pitch Email for {recipient_type}:", pitch_email)
+            if pitch_email:
+                st.text_area(f"Generated Pitch Email for {recipient_type}:", pitch_email)
 
 if __name__ == "__main__":
     main()
