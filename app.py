@@ -10,71 +10,80 @@ from ics import Calendar, Event
 openai.api_key = os.getenv('OPENAI_API_KEY')
 
 # Initialize an empty DataFrame to store PR activities
-columns = ['Activity', 'Date', 'Details']
+columns = ['Event', 'Date', 'Details']
 if 'pr_activities' not in st.session_state:
     st.session_state.pr_activities = pd.DataFrame(columns=columns)
 
-def add_activity(activity, date, details):
-    new_activity = pd.DataFrame([{'Activity': activity, 'Date': date, 'Details': details}])
-    st.session_state.pr_activities = pd.concat([st.session_state.pr_activities, new_activity], ignore_index=True)
+def add_event(event, date, details):
+    new_event = pd.DataFrame([{'Event': event, 'Date': date, 'Details': details}])
+    st.session_state.pr_activities = pd.concat([st.session_state.pr_activities, new_event], ignore_index=True)
     st.session_state.pr_activities.to_csv('pr_campaign.csv', index=False)
-    st.success(f"Activity '{activity}' on {date} added successfully!")
+    st.success(f"Event '{event}' on {date} added successfully!")
 
-def view_activities():
+def view_events():
     if st.session_state.pr_activities.empty:
-        st.warning("No activities planned.")
+        st.warning("No events planned.")
     else:
         st.dataframe(st.session_state.pr_activities)
 
-def edit_activity(index, activity=None, date=None, details=None):
+def edit_event(index, event=None, date=None, details=None):
     if index in st.session_state.pr_activities.index:
-        if activity:
-            st.session_state.pr_activities.at[index, 'Activity'] = activity
+        if event:
+            st.session_state.pr_activities.at[index, 'Event'] = event
         if date:
             st.session_state.pr_activities.at[index, 'Date'] = date
         if details:
             st.session_state.pr_activities.at[index, 'Details'] = details
         st.session_state.pr_activities.to_csv('pr_campaign.csv', index=False)
-        st.success(f"Activity at index {index} updated successfully!")
+        st.success(f"Event at index {index} updated successfully!")
     else:
-        st.error(f"No activity found at index {index}.")
+        st.error(f"No event found at index {index}.")
 
-def delete_activity(index):
+def delete_event(index):
     if index in st.session_state.pr_activities.index:
         st.session_state.pr_activities = st.session_state.pr_activities.drop(index)
         st.session_state.pr_activities.to_csv('pr_campaign.csv', index=False)
-        st.success(f"Activity at index {index} deleted successfully!")
+        st.success(f"Event at index {index} deleted successfully!")
     else:
-        st.error(f"No activity found at index {index}.")
+        st.error(f"No event found at index {index}.")
 
 def collect_author_info():
+    author_name = st.text_input("Enter the author name:")
+    author_email = st.text_input("Enter the author email:")
     book_title = st.text_input("Enter the book title:")
     book_genre = st.text_input("Enter the book genre:")
-    target_audience = st.text_input("Describe your target audience:")
     author_goal = st.text_input("What is your main goal for this book? (e.g., increase sales, build brand, etc.):")
+    target_audience = st.text_input("Describe your target audience:")
+    book_release_date = st.date_input("Enter the book release date (tentative):")
     return {
+        "author_name": author_name,
+        "author_email": author_email,
         "title": book_title,
         "genre": book_genre,
+        "goal": author_goal,
         "audience": target_audience,
-        "goal": author_goal
+        "release_date": book_release_date
     }
 
 def generate_marketing_strategy(author_info):
     prompt = f"""
     I am a book marketing expert. Based on the following details about a book and its author, generate a comprehensive book marketing strategy.
 
+    Author Name: {author_info['author_name']}
+    Author Email: {author_info['author_email']}
     Book Title: {author_info['title']}
     Genre: {author_info['genre']}
     Target Audience: {author_info['audience']}
     Main Goal: {author_info['goal']}
+    Book Release Date: {author_info['release_date']}
 
-    Provide detailed steps and strategies.
+    Provide detailed steps and strategies, including matching the author with media, PR agencies, or agents, and generating social media posts, blog posts, press releases, and pitch emails to influencers, media companies, book clubs, local libraries, elementary schools, and colleges. Also, include a book launch strategy with social media marketing, Amazon, and Google ads plan.
     """
 
     response = openai.Completion.create(
         engine="text-davinci-003",
         prompt=prompt,
-        max_tokens=500,
+        max_tokens=1500,
         temperature=0.7
     )
 
@@ -82,12 +91,12 @@ def generate_marketing_strategy(author_info):
     return strategy
 
 def generate_pdf_report(author_info, marketing_strategy):
-    c = canvas.Canvas("PR_Campaign_Report.pdf", pagesize=letter)
+    c = canvas.Canvas("Book_Marketing_Campaign_Report.pdf", pagesize=letter)
     width, height = letter
 
     # Title
     c.setFont("Helvetica-Bold", 20)
-    c.drawString(30, height - 50, "PR Campaign Report")
+    c.drawString(30, height - 50, "Book Marketing Campaign Report")
 
     # Subtitle
     c.setFont("Helvetica", 12)
@@ -108,12 +117,12 @@ def generate_pdf_report(author_info, marketing_strategy):
 
     # PR Activities
     c.setFont("Helvetica-Bold", 16)
-    c.drawString(30, y, "PR Activities")
+    c.drawString(30, y, "Events")
     y -= 20
 
     # Table headers
     c.setFont("Helvetica-Bold", 12)
-    c.drawString(30, y, "Activity")
+    c.drawString(30, y, "Event")
     c.drawString(200, y, "Date")
     c.drawString(300, y, "Details")
     y -= 20
@@ -121,7 +130,7 @@ def generate_pdf_report(author_info, marketing_strategy):
     # Table rows
     c.setFont("Helvetica", 12)
     for index, row in st.session_state.pr_activities.iterrows():
-        c.drawString(30, y, str(row['Activity']))
+        c.drawString(30, y, str(row['Event']))
         c.drawString(200, y, str(row['Date']))
         c.drawString(300, y, str(row['Details']))
         y -= 20
@@ -137,7 +146,7 @@ def export_to_ical():
 
     for index, row in st.session_state.pr_activities.iterrows():
         e = Event()
-        e.name = row['Activity']
+        e.name = row['Event']
         e.begin = row['Date']
         e.description = row['Details']
         c.events.add(e)
@@ -147,58 +156,31 @@ def export_to_ical():
     st.success("iCal file generated successfully!")
 
 def main():
-    st.title("PR Campaign Planner")
+    st.title("Book Marketing Campaign Planner")
 
-    menu = ["Add Activity", "View Activities", "Edit Activity", "Delete Activity",
-            "Collect Author Info", "Generate Marketing Strategy", "Generate PDF Report",
-            "Export to iCal"]
+    menu = ["Book Marketing Strategy", "Book Launch Strategy", "Promo and Marketing Pitch Email Generator"]
     choice = st.sidebar.selectbox("Menu", menu)
 
-    if choice == "Add Activity":
-        activity = st.text_input("Enter activity name:")
-        date = st.text_input("Enter date (YYYY-MM-DD):")
-        details = st.text_input("Enter details:")
-        if st.button("Add"):
-            add_activity(activity, date, details)
-
-    elif choice == "View Activities":
-        view_activities()
-
-    elif choice == "Edit Activity":
-        index = st.number_input("Enter the index of the activity to edit:", min_value=0)
-        activity = st.text_input("Enter new activity name (leave blank to keep unchanged):")
-        date = st.text_input("Enter new date (YYYY-MM-DD, leave blank to keep unchanged):")
-        details = st.text_input("Enter new details (leave blank to keep unchanged):")
-        if st.button("Edit"):
-            edit_activity(index, activity if activity else None, date if date else None, details if details else None)
-
-    elif choice == "Delete Activity":
-        index = st.number_input("Enter the index of the activity to delete:", min_value=0)
-        if st.button("Delete"):
-            delete_activity(index)
-
-    elif choice == "Collect Author Info":
+    if choice == "Book Marketing Strategy":
         author_info = collect_author_info()
-        if st.button("Save Info"):
-            st.session_state.author_info = author_info
-
-    elif choice == "Generate Marketing Strategy":
-        if "author_info" in st.session_state:
-            marketing_strategy = generate_marketing_strategy(st.session_state.author_info)
-            st.session_state.marketing_strategy = marketing_strategy
+        if st.button("Generate Marketing Strategy"):
+            marketing_strategy = generate_marketing_strategy(author_info)
             st.text_area("Generated Marketing Strategy:", marketing_strategy)
-        else:
-            st.warning("Please collect author info first (Option 5).")
+            st.session_state.marketing_strategy = marketing_strategy
 
-    elif choice == "Generate PDF Report":
-        if "author_info" in st.session_state and "marketing_strategy" in st.session_state:
+    elif choice == "Book Launch Strategy":
+        if "marketing_strategy" in st.session_state:
             generate_pdf_report(st.session_state.author_info, st.session_state.marketing_strategy)
         else:
-            st.warning("Please collect author info and generate marketing strategy first (Options 5 and 6).")
+            st.warning("Please generate the marketing strategy first.")
 
-    elif choice == "Export to iCal":
-        export_to_ical()
+    elif choice == "Promo and Marketing Pitch Email Generator":
+        st.text("Generate promotional and marketing pitch emails based on the type of recipient.")
+        recipient_type = st.selectbox("Select Recipient Type", ["Influencer", "Media Company", "Book Club", "Local Library", "Elementary School", "College"])
+        author_info = collect_author_info()
+        if st.button(f"Generate Pitch Email for {recipient_type}"):
+            pitch_email = generate_pitch_email(author_info, recipient_type)
+            st.text_area(f"Generated Pitch Email for {recipient_type}:", pitch_email)
 
 if __name__ == "__main__":
     main()
-
