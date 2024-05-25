@@ -1,5 +1,12 @@
+import importlib
+import ics
+import openai
+import pandas
+import streamlit
+
+
 streamlit
 pandas
-openai
-reportlab
+openai==0.28
+importlib
 ics
