@@ -92,6 +92,37 @@ def generate_marketing_strategy(author_info):
         )
         strategy = response['choices'][0]['message']['content'].strip()
         return strategy
+    except openai.OpenAIError as e:
+        st.error(f"An error occurred: {e}")
+        return None
+
+def generate_pitch_email(author_info, recipient_type):
+    prompt = f"""
+    I am a book marketing expert. Based on the following details about a book and its author, generate a personalized pitch email for a {recipient_type}.
+
+    Author Name: {author_info['author_name']}
+    Author Email: {author_info['author_email']}
+    Book Title: {author_info['title']}
+    Genre: {author_info['genre']}
+    Target Audience: {author_info['audience']}
+    Main Goal: {author_info['goal']}
+    Book Release Date: {author_info['release_date']}
+
+    Provide a compelling and professional email pitch suitable for reaching out to a {recipient_type}.
+    """
+
+    try:
+        response = openai.ChatCompletion.create(
+            model="gpt-3.5-turbo",
+            messages=[
+                {"role": "system", "content": "You are a helpful assistant."},
+                {"role": "user", "content": prompt}
+            ],
+            max_tokens=500,
+            temperature=0.7
+        )
+        pitch_email = response['choices'][0]['message']['content'].strip()
+        return pitch_email
     except openai.error.OpenAIError as e:
         st.error(f"An error occurred: {e}")
         return None
