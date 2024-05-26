@@ -112,15 +112,14 @@ def generate_pitch_email(author_info, recipient_type):
     """
 
     try:
-        response = openai.ChatCompletion.create(
-            model="gpt-3.5-turbo",
-            messages=[
-                {"role": "system", "content": "You are a helpful assistant."},
-                {"role": "user", "content": prompt}
-            ],
-            max_tokens=500,
-            temperature=0.7
-        )
+        
+        response = openai.Completion.create(
+    engine="text-davinci-003",  # or another model supported by the new API
+    prompt=prompt,
+    max_tokens=1500,
+    temperature=0.7
+)
+
         pitch_email = response['choices'][0]['message']['content'].strip()
         return pitch_email
     except openai.error.OpenAIError as e:
