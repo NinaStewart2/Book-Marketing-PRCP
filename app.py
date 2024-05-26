@@ -502,6 +502,15 @@ def main():
             st.session_state.marketing_strategy = marketing_strategy
             st.session_state.author_info = author_info
 
+            # Generate PDF
+            pdf_filename = generate_pdf_report(author_info, marketing_strategy)
+            
+            # Send email
+            recipient_email = author_info['author_email']
+            subject = "Your Book Marketing Strategy"
+            body = "Please find attached the marketing strategy for your book."
+            send_email_with_attachment(recipient_email, subject, body, pdf_filename)
+
     elif choice == "Book Launch Strategy":
         author_info = collect_author_info()
         book_description = st.text_area("Enter the book description:")
@@ -521,6 +530,15 @@ def main():
             st.text_area("Generated Book Launch Strategy:", book_launch_strategy)
             st.session_state.book_launch_strategy = book_launch_strategy
             st.session_state.author_info = author_info
+
+            # Generate PDF
+            pdf_filename = generate_pdf_report(author_info, book_launch_strategy)
+            
+            # Send email
+            recipient_email = author_info['author_email']
+            subject = "Your Book Launch Strategy"
+            body = "Please find attached the launch strategy for your book."
+            send_email_with_attachment(recipient_email, subject, body, pdf_filename)
 
     elif choice == "Promo and Marketing Pitch Email Generator":
         st.text("Generate promotional and marketing pitch emails based on the type of recipient.")
