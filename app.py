@@ -1,6 +1,11 @@
 import os
+import smtplib
 import streamlit as st
 import pandas as pd
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
+from email.mime.base import MIMEBase
+from email import encoders
 from reportlab.lib.pagesizes import letter
 from reportlab.pdfgen import canvas
 from ics import Calendar, Event
@@ -361,6 +366,46 @@ def collect_author_info():
         "audience": target_audience,
         "release_date": book_release_date
     }
+def send_email_with_attachment(recipient_email, subject, body, attachment_path):
+    from_address = 'your_email@example.com'  # Replace with your email
+    from_password = 'your_email_password'  # Replace with your email password
+
+    # Setup the MIME
+    message = MIMEMultipart()
+    message['From'] = from_address
+    message['To'] = recipient_email
+    message['Subject'] = subject
+
+    # Attach the body with the msg instance
+    message.attach(MIMEText(body, 'plain'))
+
+    # Open the file as binary mode
+    with open(attachment_path, "rb") as attachment:
+        # Add file as application/octet-stream
+        part = MIMEBase("application", "octet-stream")
+        part.set_payload(attachment.read())
+
+        # Encode file in ASCII characters to send by email
+        encoders.encode_base64(part)
+
+        # Add header as key/value pair to attachment part
+        part.add_header(
+            "Content-Disposition",
+            f"attachment; filename= {attachment_path}",
+        )
+
+        # Attach the instance 'part' to instance 'msg'
+        message.attach(part)
+
+    # Create SMTP session for sending the mail
+    session = smtplib.SMTP('smtp.gmail.com', 587)  # Use Gmail's SMTP server
+    session.starttls()  # Enable security
+    session.login(from_address, from_password)  # Login with mail_id and password
+    text = message.as_string()
+    session.sendmail(from_address, recipient_email, text)
+    session.quit()
+    st.success(f"Email sent to {recipient_email}")
+
 
 def generate_pdf_report(author_info, marketing_strategy):
  def generate_pdf_report(author_info, marketing_strategy):
@@ -416,7 +461,7 @@ def generate_pdf_report(author_info, marketing_strategy):
         file_name=pdf_filename,
         mime="application/pdf",
     )
-
+    return pdf_filename
 def export_to_ical():
     c = Calendar()
 
